@@ -39,6 +39,9 @@ def add_missing_weekend_rows(df_forecasts: pd.DataFrame) -> tuple[pd.DataFrame, 
         )
     )
 
+    
+
+
     new_rows = []
     group_cols = ["WEEK_START", "TRAIN_END", "CASHP_ID_ATM"]
     for (week_start, train_end, atm_id), _g in df.groupby(group_cols, dropna=False):
