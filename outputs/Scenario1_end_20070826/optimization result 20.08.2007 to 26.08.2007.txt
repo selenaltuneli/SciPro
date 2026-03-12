@@ -1,0 +1,9 @@
+
+============================================================
+RESULT FILE
+Result filename: optimization result 20.08.2007 to 26.08.2007.txt
+Results will also be saved to:
+outputs/Scenario1_end_20070826/optimization result 20.08.2007 to 26.08.2007.txt
+============================================================
+
+=== START OPTIMIZE ===

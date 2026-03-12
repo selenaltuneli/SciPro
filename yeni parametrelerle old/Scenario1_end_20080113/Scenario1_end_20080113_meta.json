@@ -1,0 +1,20 @@
+{
+  "scenario_prefix": "Scenario1_end_20080113",
+  "planning_start_date": "07.01.2008",
+  "planning_end_date": "13.01.2008",
+  "reoptimization_date": "06.01.2008",
+  "horizon_days": 7,
+  "t_index_start": 1,
+  "t_to_date": {
+    "1": "07.01.2008",
+    "2": "08.01.2008",
+    "3": "09.01.2008",
+    "4": "10.01.2008",
+    "5": "11.01.2008",
+    "6": "12.01.2008",
+    "7": "13.01.2008"
+  },
+  "source_file": "weekly_20080107_20080113.xlsx",
+  "source_file_full_path": "/Users/selenaltuneli/Desktop/selen/proje/weekly_excels/weekly_20080107_20080113.xlsx",
+  "output_folder": "/Users/selenaltuneli/Desktop/selen/proje/outputs/Scenario1_end_20080113"
+}

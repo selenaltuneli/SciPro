@@ -1,0 +1,120 @@
+
+============================================================
+RESULT FILE
+Result filename: optimization result 10.09.2007 to 16.09.2007.txt
+Results will also be saved to:
+outputs/Scenario1_end_20070916/optimization result 10.09.2007 to 16.09.2007.txt
+============================================================
+
+=== START OPTIMIZE ===
+=== END OPTIMIZE ===
+
+================= POST-SOLVE ANALYSIS =================
+Status: Status code: 9
+Objective value: 36618.42366125292
+Summary: total visits=14, total used-edges=15
+
+-- Inventory/Shortage Summary --
+Total inventory sum(I): 13750839.03
+Max inventory: 289581.54 at ATM 33 t=2
+Total shortage sum(S): 2253795.53
+Shortage events count: 200
+Max shortage: 43731.25 at ATM 20 t=2
+
+================= SANITY CHECKS =================
+
+-- Checking Inventory Balance --
+Inventory balance checks: 294 checked, 0 failed
+
+-- Checking Cassette Consistency (only when visited / q>0) --
+Cassette checks: 24 checked, 0 failed
+
+-- Checking Pickup Logic (only when visited / p>0) --
+Pickup checks: 19 checked, 0 failed
+
+-- Checking Degree Constraints --
+Degree checks: 301 checked, 0 failed
+
+========================================
+All sanity checks PASSED.
+========================================
+
+
+================= SERVICE SUMMARY (COMPACT) =================
+Objective (total cost): 36618.42
+t=1 | date=10.09.2007 | ATM=Z0284001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z0908001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z0951001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z0951002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z0972001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z1119001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z1169001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z1367001 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=1 | date=10.09.2007 | ATM=Z1665001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z1769001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z2135001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | ATM=Z2135002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | date=10.09.2007 | used_edges=14
+t=2 | date=11.09.2007 | ATM=Z0241002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | date=11.09.2007 | used_edges=1
+t=3 | date=12.09.2007: (no service)
+t=4 | date=13.09.2007: (no service)
+t=5 | date=14.09.2007: (no service)
+t=6 | date=15.09.2007: (no service)
+t=7 | date=16.09.2007: (no service)
+=============================================================
+
+
+================= DAILY ROUTES =================
+
+Day t=1 | date=10.09.2007, k=1:
+  total_km   = 128.694 km
+  route_cost = 321.734 €
+  used edges:
+    DEPOT -- Z1119001   (x=1, dist=9.747 km)
+    DEPOT -- Z1169001   (x=1, dist=3.691 km)
+    Z0284001 -- Z0951002   (x=1, dist=1.201 km)
+    Z0284001 -- Z1119001   (x=1, dist=13.861 km)
+    Z0899001 -- Z0908001   (x=1, dist=2.653 km)
+    Z0899001 -- Z1169001   (x=1, dist=7.601 km)
+    Z0908001 -- Z0972001   (x=1, dist=11.578 km)
+    Z0951001 -- Z0951002   (x=1, dist=0.000 km)
+    Z0951001 -- Z1367001   (x=1, dist=22.721 km)
+    Z0972001 -- Z2135002   (x=1, dist=22.888 km)
+    Z1367001 -- Z1665001   (x=1, dist=15.865 km)
+    Z1665001 -- Z1769001   (x=1, dist=14.973 km)
+    Z1769001 -- Z2135001   (x=1, dist=1.916 km)
+    Z2135001 -- Z2135002   (x=1, dist=0.000 km)
+  reconstructed tour: DEPOT -> Z1119001 -> Z0284001 -> Z0951002 -> Z0951001 -> Z1367001 -> Z1665001 -> Z1769001 -> Z2135001 -> Z2135002 -> Z0972001 -> Z0908001 -> Z0899001 -> Z1169001 -> DEPOT
+
+Day t=2 | date=11.09.2007, k=1:
+  total_km   = 3.158 km
+  route_cost = 7.895 €
+  used edges:
+    DEPOT -- Z0241002   (x=2, dist=1.579 km)
+  reconstructed tour: DEPOT -> Z0241002 -> DEPOT
+
+Day t=3 | date=12.09.2007, k=1: (no route)
+
+Day t=4 | date=13.09.2007, k=1: (no route)
+
+Day t=5 | date=14.09.2007, k=1: (no route)
+
+Day t=6 | date=15.09.2007, k=1: (no route)
+
+Day t=7 | date=16.09.2007, k=1: (no route)
+================================================
+
+
+================================================================================
+FINAL SUMMARY
+Status: 9 (Status code: 9)
+SolCount: 10
+Objective: 36618.423661
+
+-- Optimality diagnostics --
+ObjVal   : 36618.423661
+ObjBound : 25059.464033
+MIPGap   : 0.3156596727
+AbsGap   : 11558.959629

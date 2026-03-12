@@ -1,0 +1,262 @@
+Using atm_master_file: /Users/ahmetserdargeze/Desktop/selen/proje/outputs/weeklyavg_FIXED_end_20070225_atm_master.csv 2026-03-05 23:51:06.644075
+Using edges_file     : /Users/ahmetserdargeze/Desktop/selen/proje/outputs/weeklyavg_FIXED_end_20070225_edges_dist_km.csv 2026-03-05 23:51:04.963497
+Using r_file (DEMAND): /Users/ahmetserdargeze/Desktop/selen/proje/outputs/weeklyavg_Scenario1_end_20070729_r_nextweek.json 2026-03-07 03:24:03.862871
+Using run_report_file: run_report_end_20070729.log
+=== START OPTIMIZE ===
+=== END OPTIMIZE ===
+
+================= POST-SOLVE ANALYSIS =================
+Status: TIME_LIMIT
+Objective value: 59417.02802031402
+Summary: total visits=68, total used-edges=74
+
+-- Inventory/Shortage Summary --
+Total inventory sum(I): 14306591.92
+Max inventory: 261561.83 at ATM 39 t=3
+Total shortage sum(S): 4378404.17
+Shortage events count: 131
+Max shortage: 204473.39 at ATM 21 t=2
+
+================= SANITY CHECKS =================
+
+-- Checking Inventory Balance --
+Inventory balance checks: 294 checked, 0 failed
+
+-- Checking Cassette Consistency (only when visited / q>0) --
+Cassette checks: 75 checked, 0 failed
+
+-- Checking Pickup Logic (only when visited / p>0) --
+Pickup checks: 71 checked, 0 failed
+
+-- Checking Degree Constraints --
+Degree checks: 301 checked, 0 failed
+
+========================================
+All sanity checks PASSED.
+========================================
+
+
+================================================================================
+FINAL SUMMARY
+Status: 9 | SolCount: 10
+Objective: 59417.02802031402
+Sanity checks passed? True
+================================================================================
+
+
+================= SERVICE SUMMARY (COMPACT) =================
+Objective (total cost): 59417.03
+t=1 | ATM=Z0241003 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0241004 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0241007 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0284001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0386002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0646001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z0908001 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=1 | ATM=Z0951002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1119001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1169001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1367001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1524001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1665001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | ATM=Z1769001 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=1 | ATM=Z2135001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=1 | used_edges=17
+t=2 | ATM=Z0241002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0276001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0276002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0283001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0386003 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0646002 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=2 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0951001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z0972001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z1031001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z1031002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z1119001 | k=1 | y=1 | q=300000 | p=61157 | w=1 | gamma=300000
+t=2 | ATM=Z1367001 | k=1 | y=1 | q=300000 | p=28310 | w=1 | gamma=300000
+t=2 | ATM=Z1899001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | ATM=Z2011001 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=2 | ATM=Z2135002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=2 | used_edges=17
+t=3 | ATM=Z0241004 | k=1 | y=1 | q=400000 | p=32022 | w=2 | gamma=400000
+t=3 | ATM=Z0284001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z0386001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z0386002 | k=1 | y=1 | q=400000 | p=55550 | w=2 | gamma=400000
+t=3 | ATM=Z0646001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=36349 | w=1 | gamma=300000
+t=3 | ATM=Z0908001 | k=1 | y=1 | q=300000 | p=20760 | w=1 | gamma=300000
+t=3 | ATM=Z0951002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z1119001 | k=1 | y=1 | q=300000 | p=74906 | w=1 | gamma=300000
+t=3 | ATM=Z1169001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z1367001 | k=1 | y=1 | q=300000 | p=45953 | w=1 | gamma=300000
+t=3 | ATM=Z1524001 | k=1 | y=1 | q=300000 | p=59761 | w=1 | gamma=300000
+t=3 | ATM=Z1665001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z1769001 | k=1 | y=1 | q=300000 | p=11397 | w=1 | gamma=300000
+t=3 | ATM=Z1899002 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | ATM=Z2135001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=3 | used_edges=17
+t=4 | ATM=Z0241002 | k=1 | y=1 | q=300000 | p=70923 | w=1 | gamma=300000
+t=4 | ATM=Z0241003 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=4 | ATM=Z0284001 | k=1 | y=1 | q=300000 | p=68590 | w=1 | gamma=300000
+t=4 | ATM=Z0386003 | k=1 | y=1 | q=300000 | p=47229 | w=1 | gamma=300000
+t=4 | ATM=Z0646001 | k=1 | y=1 | q=300000 | p=110570 | w=1 | gamma=300000
+t=4 | ATM=Z0646002 | k=1 | y=1 | q=300000 | p=18516 | w=1 | gamma=300000
+t=4 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=39776 | w=1 | gamma=300000
+t=4 | ATM=Z0951001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=4 | ATM=Z0951002 | k=1 | y=1 | q=300000 | p=135311 | w=1 | gamma=300000
+t=4 | ATM=Z0972001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=4 | ATM=Z1119001 | k=1 | y=1 | q=400000 | p=54977 | w=2 | gamma=400000
+t=4 | ATM=Z1367001 | k=1 | y=1 | q=400000 | p=0 | w=2 | gamma=400000
+t=4 | ATM=Z1665001 | k=1 | y=1 | q=300000 | p=118928 | w=1 | gamma=300000
+t=4 | ATM=Z1769001 | k=1 | y=1 | q=300000 | p=115693 | w=1 | gamma=300000
+t=4 | ATM=Z2135001 | k=1 | y=1 | q=300000 | p=122919 | w=1 | gamma=300000
+t=4 | ATM=Z2135002 | k=1 | y=1 | q=300000 | p=51689 | w=1 | gamma=300000
+t=4 | used_edges=17
+t=5 | ATM=Z0899001 | k=1 | y=1 | q=300000 | p=453 | w=1 | gamma=300000
+t=5 | ATM=Z0908001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=5 | ATM=Z1169001 | k=1 | y=1 | q=300000 | p=0 | w=1 | gamma=300000
+t=5 | ATM=Z1665001 | k=1 | y=1 | q=300000 | p=24247 | w=1 | gamma=300000
+t=5 | used_edges=5
+t=6: (no service)
+t=7: (no service)
+=============================================================
+
+
+================= DAILY ROUTES =================
+
+Day t=1, k=1:
+  total_km   = 111.910 km
+  route_cost = 279.775 €
+  used edges:
+    DEPOT -- Z0241004   (x=1, dist=1.579 km)
+    DEPOT -- Z1524001   (x=1, dist=3.630 km)
+    Z0241003 -- Z0241004   (x=1, dist=0.000 km)
+    Z0241003 -- Z0241007   (x=1, dist=0.000 km)
+    Z0241007 -- Z1119001   (x=1, dist=9.169 km)
+    Z0284001 -- Z0951002   (x=1, dist=1.201 km)
+    Z0284001 -- Z1119001   (x=1, dist=13.861 km)
+    Z0386002 -- Z0951002   (x=1, dist=2.059 km)
+    Z0386002 -- Z1367001   (x=1, dist=24.480 km)
+    Z0646001 -- Z0899001   (x=1, dist=1.079 km)
+    Z0646001 -- Z1524001   (x=1, dist=5.229 km)
+    Z0899001 -- Z0908001   (x=1, dist=2.653 km)
+    Z0908001 -- Z1169001   (x=1, dist=10.199 km)
+    Z1169001 -- Z2135001   (x=1, dist=4.017 km)
+    Z1367001 -- Z1665001   (x=1, dist=15.865 km)
+    Z1665001 -- Z1769001   (x=1, dist=14.973 km)
+    Z1769001 -- Z2135001   (x=1, dist=1.916 km)
+  reconstructed tour: DEPOT -> Z0241004 -> Z0241003 -> Z0241007 -> Z1119001 -> Z0284001 -> Z0951002 -> Z0386002 -> Z1367001 -> Z1665001 -> Z1769001 -> Z2135001 -> Z1169001 -> Z0908001 -> Z0899001 -> Z0646001 -> Z1524001 -> DEPOT
+
+Day t=2, k=1:
+  total_km   = 112.273 km
+  route_cost = 280.683 €
+  used edges:
+    DEPOT -- Z0241002   (x=1, dist=1.579 km)
+    DEPOT -- Z0646002   (x=1, dist=8.856 km)
+    Z0241002 -- Z1031001   (x=1, dist=4.766 km)
+    Z0276001 -- Z0276002   (x=1, dist=0.000 km)
+    Z0276001 -- Z1031002   (x=1, dist=6.645 km)
+    Z0276002 -- Z0951001   (x=1, dist=12.104 km)
+    Z0283001 -- Z0972001   (x=1, dist=11.570 km)
+    Z0283001 -- Z2135002   (x=1, dist=11.410 km)
+    Z0386003 -- Z0951001   (x=1, dist=2.059 km)
+    Z0386003 -- Z1119001   (x=1, dist=16.438 km)
+    Z0646002 -- Z0899001   (x=1, dist=1.079 km)
+    Z0899001 -- Z0972001   (x=1, dist=14.225 km)
+    Z1031001 -- Z1031002   (x=1, dist=0.000 km)
+    Z1119001 -- Z1367001   (x=1, dist=9.926 km)
+    Z1367001 -- Z2011001   (x=1, dist=10.184 km)
+    Z1899001 -- Z2011001   (x=1, dist=0.066 km)
+    Z1899001 -- Z2135002   (x=1, dist=1.367 km)
+  reconstructed tour: DEPOT -> Z0241002 -> Z1031001 -> Z1031002 -> Z0276001 -> Z0276002 -> Z0951001 -> Z0386003 -> Z1119001 -> Z1367001 -> Z2011001 -> Z1899001 -> Z2135002 -> Z0283001 -> Z0972001 -> Z0899001 -> Z0646002 -> DEPOT
+
+Day t=3, k=1:
+  total_km   = 112.406 km
+  route_cost = 281.016 €
+  used edges:
+    DEPOT -- Z0241004   (x=1, dist=1.579 km)
+    DEPOT -- Z1524001   (x=1, dist=3.630 km)
+    Z0241004 -- Z1119001   (x=1, dist=9.169 km)
+    Z0284001 -- Z0951002   (x=1, dist=1.201 km)
+    Z0284001 -- Z1119001   (x=1, dist=13.861 km)
+    Z0386001 -- Z0386002   (x=1, dist=0.000 km)
+    Z0386001 -- Z1367001   (x=1, dist=24.480 km)
+    Z0386002 -- Z0951002   (x=1, dist=2.059 km)
+    Z0646001 -- Z0899001   (x=1, dist=1.079 km)
+    Z0646001 -- Z1524001   (x=1, dist=5.229 km)
+    Z0899001 -- Z0908001   (x=1, dist=2.653 km)
+    Z0908001 -- Z1169001   (x=1, dist=10.199 km)
+    Z1169001 -- Z2135001   (x=1, dist=4.017 km)
+    Z1367001 -- Z1665001   (x=1, dist=15.865 km)
+    Z1665001 -- Z1769001   (x=1, dist=14.973 km)
+    Z1769001 -- Z1899002   (x=1, dist=1.046 km)
+    Z1899002 -- Z2135001   (x=1, dist=1.367 km)
+  reconstructed tour: DEPOT -> Z0241004 -> Z1119001 -> Z0284001 -> Z0951002 -> Z0386002 -> Z0386001 -> Z1367001 -> Z1665001 -> Z1769001 -> Z1899002 -> Z2135001 -> Z1169001 -> Z0908001 -> Z0899001 -> Z0646001 -> Z1524001 -> DEPOT
+
+Day t=4, k=1:
+  total_km   = 132.150 km
+  route_cost = 330.374 €
+  used edges:
+    DEPOT -- Z0241002   (x=1, dist=1.579 km)
+    DEPOT -- Z0646002   (x=1, dist=8.856 km)
+    Z0241002 -- Z0241003   (x=1, dist=0.000 km)
+    Z0241003 -- Z1119001   (x=1, dist=9.169 km)
+    Z0284001 -- Z0951001   (x=1, dist=1.201 km)
+    Z0284001 -- Z1119001   (x=1, dist=13.861 km)
+    Z0386003 -- Z0951002   (x=1, dist=2.059 km)
+    Z0386003 -- Z1367001   (x=1, dist=24.480 km)
+    Z0646001 -- Z0646002   (x=1, dist=0.000 km)
+    Z0646001 -- Z0899001   (x=1, dist=1.079 km)
+    Z0899001 -- Z0972001   (x=1, dist=14.225 km)
+    Z0951001 -- Z0951002   (x=1, dist=0.000 km)
+    Z0972001 -- Z2135002   (x=1, dist=22.888 km)
+    Z1367001 -- Z1665001   (x=1, dist=15.865 km)
+    Z1665001 -- Z1769001   (x=1, dist=14.973 km)
+    Z1769001 -- Z2135001   (x=1, dist=1.916 km)
+    Z2135001 -- Z2135002   (x=1, dist=0.000 km)
+  reconstructed tour: DEPOT -> Z0241002 -> Z0241003 -> Z1119001 -> Z0284001 -> Z0951001 -> Z0951002 -> Z0386003 -> Z1367001 -> Z1665001 -> Z1769001 -> Z2135001 -> Z2135002 -> Z0972001 -> Z0899001 -> Z0646001 -> Z0646002 -> DEPOT
+
+Day t=5, k=1:
+  total_km   = 61.819 km
+  route_cost = 154.547 €
+  used edges:
+    DEPOT -- Z1169001   (x=1, dist=3.691 km)
+    DEPOT -- Z1665001   (x=1, dist=21.052 km)
+    Z0899001 -- Z0908001   (x=1, dist=2.653 km)
+    Z0899001 -- Z1169001   (x=1, dist=7.601 km)
+    Z0908001 -- Z1665001   (x=1, dist=26.822 km)
+  reconstructed tour: DEPOT -> Z1169001 -> Z0899001 -> Z0908001 -> Z1665001 -> DEPOT
+
+Day t=6, k=1: (no route)
+
+Day t=7, k=1: (no route)
+================================================
+
+
+-- Optimality diagnostics --
+Status: 9
+SolCount: 10
+ObjVal   : 59417.028020
+ObjBound : 49783.846403
+MIPGap   : 0.1621282979
+AbsGap   : 9633.181617
+
+================================================================================
+FINAL SUMMARY
+Status: 9 | SolCount: 10
+Objective: 59417.02802031402
+
+================= OBJECTIVE BREAKDOWN =================
+inv_cost      = 14306.591922
+stockout_cost = 43784.041702
+route_cost    = 1326.394396
+sum(components)= 59417.028020
+model.ObjVal   = 59417.028020
+diff           = 8.003553e-11
+=======================================================
+
+Sanity checks passed? True
+================================================================================
+
