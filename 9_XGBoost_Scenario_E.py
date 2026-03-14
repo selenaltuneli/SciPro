@@ -275,6 +275,7 @@ def main() -> None:
 
     save_excel(forecasts, OUTPUT_PATH)
 
+
     metrics = compute_metrics(forecasts)
     print("\nOverall Metrics (Scenario E XGBoost)")
     print(f"MAE           : {metrics['MAE']:.2f}")
@@ -283,7 +284,6 @@ def main() -> None:
     print(f"Weighted MAPE : {metrics['Weighted_MAPE'] * 100:.2f}%")
     print(f"R2            : {metrics['R2']:.4f}")
     print(f"\nSaved: {OUTPUT_PATH}")
-
 
 if __name__ == "__main__":
     main()
