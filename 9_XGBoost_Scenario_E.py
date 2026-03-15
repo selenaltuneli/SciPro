@@ -189,8 +189,12 @@ def run_scenario_e(df: pd.DataFrame) -> pd.DataFrame:
     outputs = []
 
     for reopt_start in schedule:
-        train_end = reopt_start - pd.Timedelta(days=1)
-        forecast_end = reopt_start + pd.Timedelta(days=HORIZON_DAYS - 1)
+        # Keep Scenario E aligned with the original optimization logic:
+        # reoptimization happens on the last training night, and forecasting
+        # starts on the following day.
+        train_end = reopt_start
+        forecast_start = reopt_start + pd.Timedelta(days=1)
+        forecast_end = forecast_start + pd.Timedelta(days=HORIZON_DAYS - 1)
 
         train_df = df[df[DATE_COL] <= train_end].copy()
         if TRAIN_WINDOW_DAYS is not None:
@@ -200,7 +204,7 @@ def run_scenario_e(df: pd.DataFrame) -> pd.DataFrame:
         if len(train_df) < 2000:
             continue
 
-        pred_df = df[(df[DATE_COL] >= reopt_start) & (df[DATE_COL] <= forecast_end)].copy()
+        pred_df = df[(df[DATE_COL] >= forecast_start) & (df[DATE_COL] <= forecast_end)].copy()
         if pred_df.empty:
             continue
 
@@ -217,8 +221,7 @@ def run_scenario_e(df: pd.DataFrame) -> pd.DataFrame:
 
         tmp = pd.DataFrame(
             {
-                "REOPT_START": reopt_start,
-                "WEEK_START": reopt_start,
+                "WEEK_START": forecast_start,
                 "TRAIN_END": train_end,
                 "FORECAST_DATE": pred_df[DATE_COL].values,
                 ATM_COL: pred_df[ATM_COL].astype(str).values if ATM_COL in pred_df.columns else None,
@@ -247,7 +250,7 @@ def save_excel(df_forecasts: pd.DataFrame, path: str) -> None:
     metrics = compute_metrics(df_forecasts)
 
     cycle_summary = (
-        df_forecasts.groupby("REOPT_START")
+        df_forecasts.groupby(["WEEK_START", "TRAIN_END"], dropna=False)
         .agg(
             n=("Y_TRUE_WITHDRWLS_ATM", "size"),
             mae=("ABS_ERROR", "mean"),
