@@ -1,24 +1,14 @@
 import warnings
 warnings.filterwarnings("ignore")
 
-import os
-from glob import glob
 import numpy as np
 import pandas as pd
-from pathlib import Path
-
-# Try to help XGBoost find libomp on macOS Homebrew setups.
-if "DYLD_LIBRARY_PATH" not in os.environ:
-    candidates = sorted(glob("/opt/homebrew/Cellar/llvm/*/lib"))
-    if candidates:
-        os.environ["DYLD_LIBRARY_PATH"] = candidates[-1]
-
 import xgboost as xgb
+from sklearn.metrics import r2_score
 
 
-BASE_DIR = Path(__file__).resolve().parent
-INPUT_PATH = str(BASE_DIR / "ATM_Branch_Data_Final_filled.xlsx")
-OUTPUT_PATH = str(BASE_DIR / "scenario_A_weekly_reopt_forecasts_XGBoost.xlsx")
+INPUT_PATH = r"C:\Users\Selen\Desktop\ORBA\Scientific Project\SciPro\ATM_Branch_Data_Final_filled.xlsx"
+OUTPUT_PATH = r"C:\Users\Selen\Desktop\ORBA\Scientific Project\SciPro\scenario_A_weekly_reopt_forecasts_XGBoost.xlsx"
 
 DATE_COL = "DATE"
 TARGET_COL = "WITHDRWLS_ATM"
@@ -39,7 +29,7 @@ TRAIN_WINDOW_DAYS = 365
 
 # values close to zero produce infinite APE and distort averages /
 # 0'a yakın gerçek değerler sonsuz APE üretir ve ortalamaları bozar
-APE_MIN_TRUE = 1000
+APE_MIN_TRUE = 0
 
 
 def load_data(path: str) -> pd.DataFrame:
@@ -50,13 +40,6 @@ def load_data(path: str) -> pd.DataFrame:
     # counts days since the earliest date in the dataset / veri setindeki en erken tarihten itibaren gün sayısı
     min_date = df[DATE_COL].min()
     df["TIME_INDEX"] = (df[DATE_COL] - min_date).dt.days
-    df["DAY_OF_WEEK"] = df[DATE_COL].dt.dayofweek
-    df["IS_WEEKEND"] = (df["DAY_OF_WEEK"] >= 5).astype(int)
-    df["DAY_OF_MONTH"] = df[DATE_COL].dt.day
-    df["MONTH"] = df[DATE_COL].dt.month
-    df["WEEK_OF_YEAR"] = df[DATE_COL].dt.isocalendar().week.astype(int)
-    df["IS_MONTH_START"] = df[DATE_COL].dt.is_month_start.astype(int)
-    df["IS_MONTH_END"] = df[DATE_COL].dt.is_month_end.astype(int)
 
     if "CASHP_ID_ATM" in df.columns:
         df = df.sort_values(["CASHP_ID_ATM", DATE_COL]).reset_index(drop=True)
@@ -97,7 +80,7 @@ def one_hot_with_reference(train_df: pd.DataFrame, other_df: pd.DataFrame, feats
     return X_train, X_other
 
 
-def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]) -> tuple[xgb.Booster, pd.Index, float]:
+def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]) -> tuple[xgb.Booster, pd.Index]:
     max_day = train_df[DATE_COL].max()
     valid_start = max_day - pd.Timedelta(days=VALIDATION_DAYS)
 
@@ -142,27 +125,9 @@ def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]) -> tuple[xgb.Boo
             dtrain=dtrain,
             num_boost_round=5000,
             evals=[(dvalid, "valid")],
-            callbacks=[xgb.callback.EarlyStopping(rounds=200, save_best=True)],
+            early_stopping_rounds=200,
             verbose_eval=False
         )
-
-        best_iter = getattr(booster, "best_iteration", None)
-        if best_iter is not None:
-            y_va_pred = booster.predict(dvalid, iteration_range=(0, best_iter + 1))
-        else:
-            y_va_pred = booster.predict(dvalid)
-
-        if USE_LOG_TARGET:
-            y_va_pred = np.expm1(y_va_pred)
-            y_va_true = np.expm1(y_va)
-        else:
-            y_va_true = y_va
-
-        y_va_pred = np.clip(y_va_pred, 0, None)
-        ratio = (y_va_true + 1.0) / (y_va_pred + 1.0)
-        ratio = ratio[np.isfinite(ratio)]
-        calib = float(np.clip(np.median(ratio), 0.85, 1.20)) if len(ratio) else 1.0
-        return booster, X_tr.columns, calib
     else:
         # not enough data for early stopping, fit on everything with fewer rounds /
         # erken durdurma için yeterli veri yok, daha az iterasyonla tüm veriyle eğit
@@ -179,14 +144,9 @@ def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]) -> tuple[xgb.Boo
             verbose_eval=False
         )
 
-        return booster, X_all.columns, 1.0
+        return booster, X_all.columns
 
-
-def predict_with_booster(booster: xgb.Booster, dmatrix: xgb.DMatrix) -> np.ndarray:
-    best_iter = getattr(booster, "best_iteration", None)
-    if best_iter is not None:
-        return booster.predict(dmatrix, iteration_range=(0, best_iter + 1))
-    return booster.predict(dmatrix)
+    return booster, X_tr.columns
 
 
 def compute_metrics(df_forecasts: pd.DataFrame) -> dict:
@@ -211,9 +171,7 @@ def compute_metrics(df_forecasts: pd.DataFrame) -> dict:
     pos = y_true > 0
     weighted_mape = float(np.sum(abs_err[pos]) / np.sum(y_true[pos])) if np.sum(y_true[pos]) > 0 else np.nan
 
-    ss_res = np.sum((y_true - y_pred) ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    r2 = float(1 - ss_res / ss_tot) if ss_tot > 0 else np.nan
+    r2 = float(r2_score(y_true, y_pred))
 
     return {
         "MAE": mae,
@@ -252,7 +210,7 @@ def run_scenario_A(df: pd.DataFrame) -> pd.DataFrame:
         if pred_df.empty:
             continue
 
-        booster, ref_cols, calib = train_xgb_booster(train_df, feats)
+        booster, ref_cols = train_xgb_booster(train_df, feats)
 
         # prediction matrix must match the training feature space exactly /
         # tahmin matrisi eğitim sütun uzayıyla tam eşleşmeli
@@ -260,15 +218,16 @@ def run_scenario_A(df: pd.DataFrame) -> pd.DataFrame:
         X_pred = X_pred.reindex(columns=ref_cols, fill_value=0)
 
         dpred = xgb.DMatrix(X_pred, feature_names=list(ref_cols))
-        y_pred = predict_with_booster(booster, dpred)
+        y_pred = booster.predict(dpred)
 
         if USE_LOG_TARGET:
             y_pred = np.expm1(y_pred)     # inverse of log1p / log1p'nin tersi
 
-        y_pred = y_pred * calib
         y_pred = np.clip(y_pred, 0, None) # withdrawals cannot be negative / para çekimi negatif olamaz
 
         tmp = pd.DataFrame({
+            "MODEL": "XGBoost",
+            "SCENARIO": "A",
             "WEEK_START": week_start,
             "TRAIN_END": train_end,
             "FORECAST_DATE": pred_df[DATE_COL].values,
@@ -288,7 +247,7 @@ def run_scenario_A(df: pd.DataFrame) -> pd.DataFrame:
         tmp.loc[m, "APE"] = tmp.loc[m, "ABS_ERROR"] / tmp.loc[m, "Y_TRUE_WITHDRWLS_ATM"]
 
         outputs.append(tmp)
-        print(f"[OK] {week_start.date()} | rows={len(tmp)} | calib={calib:.3f}")
+        print(f"[OK] {week_start.date()} | rows={len(tmp)}")
 
     if not outputs:
         return pd.DataFrame()
@@ -306,8 +265,7 @@ def save_excel(df_forecasts: pd.DataFrame, path: str) -> None:
             n=("Y_TRUE_WITHDRWLS_ATM", "size"),
             mae=("ABS_ERROR", "mean"),
             mean_ape=("APE", "mean"),
-            median_ape=("APE", "median"),
-            bias=("Y_PRED_WITHDRWLS_ATM", lambda s: float(np.mean(s - df_forecasts.loc[s.index, "Y_TRUE_WITHDRWLS_ATM"])))
+            median_ape=("APE", "median")
         )
         .reset_index()
     )
@@ -315,7 +273,7 @@ def save_excel(df_forecasts: pd.DataFrame, path: str) -> None:
     metrics_df = pd.DataFrame([metrics])
 
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
-        df_forecasts.to_excel(writer, index=False, sheet_name="Forecasts")
+        df_forecasts.to_excel(writer, index=False, sheet_name="Scenario_A_Forecasts")
         weekly.to_excel(writer, index=False, sheet_name="Weekly_Summary")
         metrics_df.to_excel(writer, index=False, sheet_name="Overall_Metrics")
 
