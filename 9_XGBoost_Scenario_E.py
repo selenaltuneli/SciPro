@@ -1,45 +1,54 @@
-import warnings
-
-warnings.filterwarnings("ignore")
+"""Train the fixed 3-day re-optimization XGBoost model for Scenario E."""
 
 import os
+import warnings
 from glob import glob
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Try to help XGBoost find libomp on macOS Homebrew setups.
+warnings.filterwarnings("ignore")
+
+# This helps XGBoost find libomp on some macOS Homebrew setups.
 if "DYLD_LIBRARY_PATH" not in os.environ:
-    candidates = sorted(glob("/opt/homebrew/Cellar/llvm/*/lib"))
-    if candidates:
-        os.environ["DYLD_LIBRARY_PATH"] = candidates[-1]
+    libomp_candidates = sorted(glob("/opt/homebrew/Cellar/llvm/*/lib"))
+    if libomp_candidates:
+        os.environ["DYLD_LIBRARY_PATH"] = libomp_candidates[-1]
 
 import xgboost as xgb
 
-
 BASE_DIR = Path(__file__).resolve().parent
-INPUT_PATH = str(BASE_DIR / "ATM_Branch_Data_Final_filled.xlsx")
-OUTPUT_PATH = str(BASE_DIR / "scenario_E_fixed_3day_reopt_forecasts_XGBoost.xlsx")
+INPUT_PATH = BASE_DIR / "ATM_Branch_Data_Final_filled.xlsx"
+OUTPUT_PATH = BASE_DIR / "scenario_E_fixed_3day_reopt_forecasts_XGBoost.xlsx"
 
 DATE_COL = "DATE"
 TARGET_COL = "WITHDRWLS_ATM"
 ATM_COL = "CASHP_ID_ATM"
 
+# Scenario E re-optimizes every 3 days and forecasts the next 3 days.
 REOPT_FREQ_DAYS = 3
 HORIZON_DAYS = 3
 VALIDATION_DAYS = 60
 RANDOM_SEED = 42
+
+# Using log1p on the target helps stabilize variance and reduces the impact of large values.
 USE_LOG_TARGET = True
+
+# Restricting training to recent history helps reduce concept drift.
 TRAIN_WINDOW_DAYS = 365
+
+# Very small actual values can make APE unstable, so they can be excluded if needed.
 APE_MIN_TRUE = 1000
+MIN_TRAIN_ROWS = 2000
 
 
-def load_data(path: str) -> pd.DataFrame:
+def load_data(path: Path) -> pd.DataFrame:
     df = pd.read_excel(path)
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
     df = df.dropna(subset=[DATE_COL, TARGET_COL]).copy()
 
+    # TIME_INDEX gives the model a simple numeric representation of long-term trend.
     min_date = df[DATE_COL].min()
     df["TIME_INDEX"] = (df[DATE_COL] - min_date).dt.days
     df["DAY_OF_WEEK"] = df[DATE_COL].dt.dayofweek
@@ -54,49 +63,66 @@ def load_data(path: str) -> pd.DataFrame:
         df[ATM_COL] = df[ATM_COL].astype(str)
         df = df.sort_values([ATM_COL, DATE_COL]).reset_index(drop=True)
     else:
-        df = df.sort_values([DATE_COL]).reset_index(drop=True)
+        df = df.sort_values(DATE_COL).reset_index(drop=True)
 
     return df
 
 
-def reopt_schedule(df: pd.DataFrame) -> pd.DatetimeIndex:
+def build_reoptimization_schedule(df: pd.DataFrame) -> pd.DatetimeIndex:
     max_date = df[DATE_COL].max().normalize()
     min_date = df[DATE_COL].min().normalize()
-    start = max_date - pd.Timedelta(days=365)
-    schedule_start = max(min_date, start)
+    start_date = max_date - pd.Timedelta(days=365)
+    schedule_start = max(min_date, start_date)
     return pd.date_range(start=schedule_start, end=max_date, freq=f"{REOPT_FREQ_DAYS}D")
 
 
-def feature_cols(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns if c not in {DATE_COL, TARGET_COL}]
+def get_feature_columns(df: pd.DataFrame) -> list[str]:
+    return [column_name for column_name in df.columns if column_name not in {DATE_COL, TARGET_COL}]
 
 
-def one_hot_with_reference(train_df: pd.DataFrame, other_df: pd.DataFrame, feats: list[str]):
-    x_train = pd.get_dummies(train_df[feats], drop_first=False)
-    x_other = pd.get_dummies(other_df[feats], drop_first=False)
+def prepare_target(values: np.ndarray) -> np.ndarray:
+    if USE_LOG_TARGET:
+        return np.log1p(values)
+    return values
+
+
+def invert_target(values: np.ndarray) -> np.ndarray:
+    if USE_LOG_TARGET:
+        return np.expm1(values)
+    return values
+
+
+def one_hot_with_reference(
+    train_df: pd.DataFrame,
+    other_df: pd.DataFrame,
+    feature_columns: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    x_train = pd.get_dummies(train_df[feature_columns], drop_first=False)
+    x_other = pd.get_dummies(other_df[feature_columns], drop_first=False)
     x_other = x_other.reindex(columns=x_train.columns, fill_value=0)
     return x_train, x_other
 
 
-def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]):
-    max_day = train_df[DATE_COL].max()
-    valid_start = max_day - pd.Timedelta(days=VALIDATION_DAYS)
+def train_xgboost_model(
+    train_df: pd.DataFrame,
+    feature_columns: list[str],
+) -> tuple[xgb.Booster, pd.Index, float]:
+    max_train_day = train_df[DATE_COL].max()
+    validation_start = max_train_day - pd.Timedelta(days=VALIDATION_DAYS)
 
-    tr = train_df[train_df[DATE_COL] < valid_start].copy()
-    va = train_df[train_df[DATE_COL] >= valid_start].copy()
-    use_valid = (len(tr) > 1000) and (len(va) > 200)
+    # The newest part of the training window is used as a validation split.
+    train_split = train_df[train_df[DATE_COL] < validation_start].copy()
+    validation_split = train_df[train_df[DATE_COL] >= validation_start].copy()
+    use_validation = len(train_split) > 1000 and len(validation_split) > 200
 
-    x_tr, _ = one_hot_with_reference(tr, tr, feats)
-    _, x_va = one_hot_with_reference(tr, va, feats)
+    x_train, _ = one_hot_with_reference(train_split, train_split, feature_columns)
+    _, x_valid = one_hot_with_reference(train_split, validation_split, feature_columns)
 
-    y_tr = tr[TARGET_COL].to_numpy()
-    y_va = va[TARGET_COL].to_numpy()
-    if USE_LOG_TARGET:
-        y_tr = np.log1p(y_tr)
-        y_va = np.log1p(y_va)
+    y_train = prepare_target(train_split[TARGET_COL].to_numpy())
+    y_valid = prepare_target(validation_split[TARGET_COL].to_numpy())
 
-    dtrain = xgb.DMatrix(x_tr, label=y_tr, feature_names=list(x_tr.columns))
-    dvalid = xgb.DMatrix(x_va, label=y_va, feature_names=list(x_tr.columns))
+    dtrain = xgb.DMatrix(x_train, label=y_train, feature_names=list(x_train.columns))
+    dvalid = xgb.DMatrix(x_valid, label=y_valid, feature_names=list(x_train.columns))
 
     params = {
         "objective": "reg:squarederror",
@@ -110,7 +136,7 @@ def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]):
         "tree_method": "hist",
     }
 
-    if use_valid:
+    if use_validation:
         booster = xgb.train(
             params=params,
             dtrain=dtrain,
@@ -120,173 +146,198 @@ def train_xgb_booster(train_df: pd.DataFrame, feats: list[str]):
             verbose_eval=False,
         )
 
-        best_iter = getattr(booster, "best_iteration", None)
-        if best_iter is not None:
-            y_va_pred = booster.predict(dvalid, iteration_range=(0, best_iter + 1))
+        best_iteration = getattr(booster, "best_iteration", None)
+        if best_iteration is not None:
+            validation_pred = booster.predict(dvalid, iteration_range=(0, best_iteration + 1))
         else:
-            y_va_pred = booster.predict(dvalid)
+            validation_pred = booster.predict(dvalid)
 
         if USE_LOG_TARGET:
-            y_va_pred = np.expm1(y_va_pred)
-            y_va_true = np.expm1(y_va)
+            validation_pred = np.expm1(validation_pred)
+            validation_true = np.expm1(y_valid)
         else:
-            y_va_true = y_va
+            validation_true = y_valid
 
-        y_va_pred = np.clip(y_va_pred, 0, None)
-        ratio = (y_va_true + 1.0) / (y_va_pred + 1.0)
+        validation_pred = np.clip(validation_pred, 0, None)
+
+        # A simple median ratio is used to correct systematic under/over prediction on the validation split.
+        ratio = (validation_true + 1.0) / (validation_pred + 1.0)
         ratio = ratio[np.isfinite(ratio)]
-        calib = float(np.clip(np.median(ratio), 0.85, 1.20)) if len(ratio) else 1.0
-        return booster, x_tr.columns, calib
+        calibration_factor = float(np.clip(np.median(ratio), 0.85, 1.20)) if len(ratio) else 1.0
+        return booster, x_train.columns, calibration_factor
 
-    x_all, _ = one_hot_with_reference(train_df, train_df, feats)
-    y_all = train_df[TARGET_COL].to_numpy()
-    if USE_LOG_TARGET:
-        y_all = np.log1p(y_all)
-
+    x_all, _ = one_hot_with_reference(train_df, train_df, feature_columns)
+    y_all = prepare_target(train_df[TARGET_COL].to_numpy())
     dtrain_all = xgb.DMatrix(x_all, label=y_all, feature_names=list(x_all.columns))
-    booster = xgb.train(params=params, dtrain=dtrain_all, num_boost_round=1000, verbose_eval=False)
+
+    booster = xgb.train(
+        params=params,
+        dtrain=dtrain_all,
+        num_boost_round=1000,
+        verbose_eval=False,
+    )
     return booster, x_all.columns, 1.0
 
 
-def predict_with_booster(booster: xgb.Booster, dmatrix: xgb.DMatrix) -> np.ndarray:
-    best_iter = getattr(booster, "best_iteration", None)
-    if best_iter is not None:
-        return booster.predict(dmatrix, iteration_range=(0, best_iter + 1))
+def predict_with_model(booster: xgb.Booster, dmatrix: xgb.DMatrix) -> np.ndarray:
+    best_iteration = getattr(booster, "best_iteration", None)
+    if best_iteration is not None:
+        return booster.predict(dmatrix, iteration_range=(0, best_iteration + 1))
     return booster.predict(dmatrix)
 
 
-def compute_metrics(df_forecasts: pd.DataFrame) -> dict:
-    y_true = df_forecasts["Y_TRUE_WITHDRWLS_ATM"].to_numpy()
-    y_pred = df_forecasts["Y_PRED_WITHDRWLS_ATM"].to_numpy()
-    abs_err = np.abs(y_true - y_pred)
+def compute_metrics(forecast_df: pd.DataFrame) -> dict[str, float]:
+    y_true = forecast_df["Y_TRUE_WITHDRWLS_ATM"].to_numpy()
+    y_pred = forecast_df["Y_PRED_WITHDRWLS_ATM"].to_numpy()
+    abs_error = np.abs(y_true - y_pred)
 
-    mask = y_true >= APE_MIN_TRUE if APE_MIN_TRUE > 0 else y_true > 0
+    valid_mask = y_true >= APE_MIN_TRUE if APE_MIN_TRUE > 0 else y_true > 0
     ape = np.full_like(y_true, np.nan, dtype=float)
-    ape[mask] = abs_err[mask] / y_true[mask]
+    ape[valid_mask] = abs_error[valid_mask] / y_true[valid_mask]
 
-    mae = float(np.mean(abs_err))
-    mean_ape = float(np.nanmean(ape))
-    median_ape = float(np.nanmedian(ape))
-    pos = y_true > 0
-    weighted_mape = float(np.sum(abs_err[pos]) / np.sum(y_true[pos])) if np.sum(y_true[pos]) > 0 else np.nan
+    positive_mask = y_true > 0
+    weighted_mape = (
+        float(np.sum(abs_error[positive_mask]) / np.sum(y_true[positive_mask]))
+        if np.sum(y_true[positive_mask]) > 0
+        else np.nan
+    )
 
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
     r2 = float(1 - ss_res / ss_tot) if ss_tot > 0 else np.nan
 
     return {
-        "MAE": mae,
-        "Mean_APE": mean_ape,
-        "Median_APE": median_ape,
+        "MAE": float(np.mean(abs_error)),
+        "Mean_APE": float(np.nanmean(ape)),
+        "Median_APE": float(np.nanmedian(ape)),
         "Weighted_MAPE": weighted_mape,
         "R2": r2,
     }
 
 
+def build_forecast_rows(
+    forecast_start: pd.Timestamp,
+    train_end: pd.Timestamp,
+    prediction_df: pd.DataFrame,
+    predictions: np.ndarray,
+) -> pd.DataFrame:
+    forecast_df = pd.DataFrame(
+        {
+            "WEEK_START": forecast_start,
+            "TRAIN_END": train_end,
+            "FORECAST_DATE": prediction_df[DATE_COL].values,
+            ATM_COL: prediction_df[ATM_COL].astype(str).values if ATM_COL in prediction_df.columns else None,
+            "Y_PRED_WITHDRWLS_ATM": predictions,
+            "Y_TRUE_WITHDRWLS_ATM": prediction_df[TARGET_COL].values,
+            "REOPT_CYCLE_DAYS": REOPT_FREQ_DAYS,
+            "FORECAST_HORIZON_DAYS": HORIZON_DAYS,
+        }
+    )
+
+    forecast_df["ABS_ERROR"] = np.abs(forecast_df["Y_TRUE_WITHDRWLS_ATM"] - forecast_df["Y_PRED_WITHDRWLS_ATM"])
+    valid_mask = (
+        forecast_df["Y_TRUE_WITHDRWLS_ATM"] >= APE_MIN_TRUE
+        if APE_MIN_TRUE > 0
+        else forecast_df["Y_TRUE_WITHDRWLS_ATM"] > 0
+    )
+    forecast_df["APE"] = np.nan
+    forecast_df.loc[valid_mask, "APE"] = (
+        forecast_df.loc[valid_mask, "ABS_ERROR"] / forecast_df.loc[valid_mask, "Y_TRUE_WITHDRWLS_ATM"]
+    )
+
+    return forecast_df
+
+
 def run_scenario_e(df: pd.DataFrame) -> pd.DataFrame:
-    feats = feature_cols(df)
-    schedule = reopt_schedule(df)
-    outputs = []
+    feature_columns = get_feature_columns(df)
+    schedule = build_reoptimization_schedule(df)
+    forecast_parts = []
 
     for reopt_start in schedule:
-        # Keep Scenario E aligned with the original optimization logic:
-        # reoptimization happens on the last training night, and forecasting
-        # starts on the following day.
+        # Scenario E follows the original optimization timing:
+        # re-optimization happens at the end of the training day,
+        # and the forecast starts on the next day.
         train_end = reopt_start
         forecast_start = reopt_start + pd.Timedelta(days=1)
         forecast_end = forecast_start + pd.Timedelta(days=HORIZON_DAYS - 1)
 
         train_df = df[df[DATE_COL] <= train_end].copy()
         if TRAIN_WINDOW_DAYS is not None:
+            # A rolling training window avoids learning from data that may be too old.
             window_start = train_end - pd.Timedelta(days=TRAIN_WINDOW_DAYS - 1)
             train_df = train_df[train_df[DATE_COL] >= window_start].copy()
 
-        if len(train_df) < 2000:
+        if len(train_df) < MIN_TRAIN_ROWS:
             continue
 
-        pred_df = df[(df[DATE_COL] >= forecast_start) & (df[DATE_COL] <= forecast_end)].copy()
-        if pred_df.empty:
+        prediction_df = df[(df[DATE_COL] >= forecast_start) & (df[DATE_COL] <= forecast_end)].copy()
+        if prediction_df.empty:
             continue
 
-        booster, ref_cols, calib = train_xgb_booster(train_df, feats)
-        x_pred = pd.get_dummies(pred_df[feats], drop_first=False)
-        x_pred = x_pred.reindex(columns=ref_cols, fill_value=0)
-        dpred = xgb.DMatrix(x_pred, feature_names=list(ref_cols))
+        booster, reference_columns, calibration_factor = train_xgboost_model(train_df, feature_columns)
+        x_pred = pd.get_dummies(prediction_df[feature_columns], drop_first=False)
+        x_pred = x_pred.reindex(columns=reference_columns, fill_value=0)
+        dpred = xgb.DMatrix(x_pred, feature_names=list(reference_columns))
 
-        y_pred = predict_with_booster(booster, dpred)
-        if USE_LOG_TARGET:
-            y_pred = np.expm1(y_pred)
+        predictions = invert_target(predict_with_model(booster, dpred))
+        predictions = np.clip(predictions * calibration_factor, 0, None)
 
-        y_pred = np.clip(y_pred * calib, 0, None)
+        forecast_parts.append(build_forecast_rows(forecast_start, train_end, prediction_df, predictions))
+        print(f"[OK] {reopt_start.date()} | rows={len(prediction_df)} | calib={calibration_factor:.3f}")
 
-        tmp = pd.DataFrame(
-            {
-                "WEEK_START": forecast_start,
-                "TRAIN_END": train_end,
-                "FORECAST_DATE": pred_df[DATE_COL].values,
-                ATM_COL: pred_df[ATM_COL].astype(str).values if ATM_COL in pred_df.columns else None,
-                "Y_PRED_WITHDRWLS_ATM": y_pred,
-                "Y_TRUE_WITHDRWLS_ATM": pred_df[TARGET_COL].values,
-                "REOPT_CYCLE_DAYS": REOPT_FREQ_DAYS,
-                "FORECAST_HORIZON_DAYS": HORIZON_DAYS,
-            }
-        )
-
-        tmp["ABS_ERROR"] = np.abs(tmp["Y_TRUE_WITHDRWLS_ATM"] - tmp["Y_PRED_WITHDRWLS_ATM"])
-        mask = tmp["Y_TRUE_WITHDRWLS_ATM"] >= APE_MIN_TRUE if APE_MIN_TRUE > 0 else tmp["Y_TRUE_WITHDRWLS_ATM"] > 0
-        tmp["APE"] = np.nan
-        tmp.loc[mask, "APE"] = tmp.loc[mask, "ABS_ERROR"] / tmp.loc[mask, "Y_TRUE_WITHDRWLS_ATM"]
-
-        outputs.append(tmp)
-        print(f"[OK] {reopt_start.date()} | rows={len(tmp)} | calib={calib:.3f}")
-
-    if not outputs:
+    if not forecast_parts:
         return pd.DataFrame()
 
-    return pd.concat(outputs, ignore_index=True)
+    return pd.concat(forecast_parts, ignore_index=True)
 
 
-def save_excel(df_forecasts: pd.DataFrame, path: str) -> None:
-    metrics = compute_metrics(df_forecasts)
+def save_excel(forecast_df: pd.DataFrame, output_path: Path) -> None:
+    metrics = compute_metrics(forecast_df)
 
     cycle_summary = (
-        df_forecasts.groupby(["WEEK_START", "TRAIN_END"], dropna=False)
+        forecast_df.groupby(["WEEK_START", "TRAIN_END"], dropna=False)
         .agg(
             n=("Y_TRUE_WITHDRWLS_ATM", "size"),
             mae=("ABS_ERROR", "mean"),
             mean_ape=("APE", "mean"),
             median_ape=("APE", "median"),
-            bias=("Y_PRED_WITHDRWLS_ATM", lambda s: float(np.mean(s - df_forecasts.loc[s.index, "Y_TRUE_WITHDRWLS_ATM"]))),
+            bias=(
+                "Y_PRED_WITHDRWLS_ATM",
+                lambda series: float(np.mean(series - forecast_df.loc[series.index, "Y_TRUE_WITHDRWLS_ATM"])),
+            ),
         )
         .reset_index()
     )
 
     metrics_df = pd.DataFrame([metrics])
 
-    with pd.ExcelWriter(path, engine="openpyxl") as writer:
-        df_forecasts.to_excel(writer, index=False, sheet_name="Forecasts")
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        forecast_df.to_excel(writer, index=False, sheet_name="Forecasts")
         cycle_summary.to_excel(writer, index=False, sheet_name="Reopt_Summary")
         metrics_df.to_excel(writer, index=False, sheet_name="Overall_Metrics")
 
 
-def main() -> None:
-    df = load_data(INPUT_PATH)
-    forecasts = run_scenario_e(df)
-
-    if forecasts.empty:
-        raise RuntimeError("The output is empty. Please verify date coverage and column names.")
-
-    save_excel(forecasts, OUTPUT_PATH)
-
-
-    metrics = compute_metrics(forecasts)
+def print_overall_metrics(forecast_df: pd.DataFrame) -> None:
+    metrics = compute_metrics(forecast_df)
     print("\nOverall Metrics (Scenario E XGBoost)")
     print(f"MAE           : {metrics['MAE']:.2f}")
     print(f"Mean APE      : {metrics['Mean_APE'] * 100:.2f}%")
     print(f"Median APE    : {metrics['Median_APE'] * 100:.2f}%")
     print(f"Weighted MAPE : {metrics['Weighted_MAPE'] * 100:.2f}%")
     print(f"R2            : {metrics['R2']:.4f}")
+
+
+def main() -> None:
+    df = load_data(INPUT_PATH)
+    forecast_df = run_scenario_e(df)
+
+    if forecast_df.empty:
+        raise RuntimeError("The forecast output is empty. Please verify date coverage and column names.")
+
+    save_excel(forecast_df, OUTPUT_PATH)
+    print_overall_metrics(forecast_df)
     print(f"\nSaved: {OUTPUT_PATH}")
+
 
 if __name__ == "__main__":
     main()
