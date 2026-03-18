@@ -1,10 +1,11 @@
+"""Prepare Scenario D optimization inputs from forecast outputs."""
+
 import argparse
 import json
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-
 
 FORECAST_SHEET = "Forecasts"
 DATE_COL = "DATE"
@@ -15,10 +16,10 @@ PRED_COL = "Y_PRED_WITHDRWLS_ATM"
 
 def load_forecasts(path: Path) -> pd.DataFrame:
     df = pd.read_excel(path, sheet_name=FORECAST_SHEET)
-    required = {"WEEK_START", "TRAIN_END", "FORECAST_DATE", ATM_COL, PRED_COL}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"Forecast sheet is missing required columns: {sorted(missing)}")
+    required_columns = {"WEEK_START", "TRAIN_END", "FORECAST_DATE", ATM_COL, PRED_COL}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        raise ValueError(f"Forecast sheet is missing required columns: {sorted(missing_columns)}")
 
     df["WEEK_START"] = pd.to_datetime(df["WEEK_START"], errors="coerce").dt.normalize()
     df["TRAIN_END"] = pd.to_datetime(df["TRAIN_END"], errors="coerce").dt.normalize()
@@ -31,15 +32,16 @@ def load_forecasts(path: Path) -> pd.DataFrame:
 
 def load_thresholds(path: Path, quantile: float) -> pd.Series:
     df = pd.read_excel(path)
-    required = {DATE_COL, ATM_COL, TARGET_COL}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"Historical data is missing required columns: {sorted(missing)}")
+    required_columns = {DATE_COL, ATM_COL, TARGET_COL}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        raise ValueError(f"Historical data is missing required columns: {sorted(missing_columns)}")
 
     df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
     df[ATM_COL] = df[ATM_COL].astype(str)
     df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce")
     df = df.dropna(subset=[DATE_COL, ATM_COL, TARGET_COL]).copy()
+
     thresholds = df.groupby(ATM_COL)[TARGET_COL].quantile(quantile)
     thresholds.name = "threshold"
     return thresholds
@@ -59,20 +61,23 @@ def build_run_payload(
         raise ValueError(f"No forecast rows found for run {start_date.date()} -> {end_date.date()}")
 
     unique_dates = sorted(run_slice["FORECAST_DATE"].unique())
-    t_to_date = {str(i + 1): pd.Timestamp(d).strftime("%d.%m.%Y") for i, d in enumerate(unique_dates)}
-    date_to_t = {pd.Timestamp(d): i + 1 for i, d in enumerate(unique_dates)}
+    t_to_date = {str(index + 1): pd.Timestamp(date_value).strftime("%d.%m.%Y") for index, date_value in enumerate(unique_dates)}
+    date_to_t = {pd.Timestamp(date_value): index + 1 for index, date_value in enumerate(unique_dates)}
     run_slice["_t"] = run_slice["FORECAST_DATE"].map(date_to_t)
 
-    dup = run_slice.duplicated(subset=[ATM_COL, "_t"], keep=False)
-    if dup.any():
-        bad = run_slice.loc[dup, [ATM_COL, "FORECAST_DATE", "_t", PRED_COL]].sort_values([ATM_COL, "_t"])
+    duplicate_mask = run_slice.duplicated(subset=[ATM_COL, "_t"], keep=False)
+    if duplicate_mask.any():
+        duplicate_rows = run_slice.loc[
+            duplicate_mask,
+            [ATM_COL, "FORECAST_DATE", "_t", PRED_COL],
+        ].sort_values([ATM_COL, "_t"])
         raise ValueError(
             "Duplicate rows detected for the same (ATM, t).\n"
-            f"Examples:\n{bad.head(20).to_string(index=False)}"
+            f"Examples:\n{duplicate_rows.head(20).to_string(index=False)}"
         )
 
     run_tag = "weekly" if trigger_type == "weekly" else "peak"
-    r_json = {
+    prediction_json = {
         f"{row[ATM_COL]}|{int(row['_t'])}": float(row[PRED_COL])
         for _, row in run_slice.iterrows()
     }
@@ -95,7 +100,7 @@ def build_run_payload(
 
     return {
         "prefix": prefix,
-        "r_json": r_json,
+        "r_json": prediction_json,
         "meta": meta,
         "rows": len(run_slice),
         "atms": run_slice[ATM_COL].nunique(),
@@ -110,7 +115,7 @@ def build_runs(df_forecasts: pd.DataFrame, thresholds: pd.Series) -> list[dict]:
         week_end = week_df["FORECAST_DATE"].max()
         train_end = week_df["TRAIN_END"].iloc[0]
 
-        # Baseline weekly run.
+        # Each forecast week always creates one baseline weekly planning run.
         runs.append(
             build_run_payload(
                 run_df=week_df,
@@ -124,11 +129,12 @@ def build_runs(df_forecasts: pd.DataFrame, thresholds: pd.Series) -> list[dict]:
         )
 
         week_df = week_df.merge(thresholds, left_on=ATM_COL, right_index=True, how="left")
-        peaks = week_df[week_df[PRED_COL] > week_df["threshold"]].copy()
-        if peaks.empty:
+        peak_rows = week_df[week_df[PRED_COL] > week_df["threshold"]].copy()
+        if peak_rows.empty:
             continue
 
-        trigger_starts = sorted((peaks["FORECAST_DATE"] - pd.Timedelta(days=1)).drop_duplicates())
+        # If a forecast exceeds its ATM-specific threshold, a new planning run is triggered one day earlier.
+        trigger_starts = sorted((peak_rows["FORECAST_DATE"] - pd.Timedelta(days=1)).drop_duplicates())
         for trigger_start in trigger_starts:
             trigger_start = pd.Timestamp(trigger_start).normalize()
             if trigger_start <= train_end or trigger_start < week_start or trigger_start > week_end:
@@ -146,12 +152,12 @@ def build_runs(df_forecasts: pd.DataFrame, thresholds: pd.Series) -> list[dict]:
                 )
             )
 
-    # Deduplicate exact same run window if multiple peaks create the same trigger.
+    # Different peak dates can lead to the same run window, so duplicate prefixes are removed.
     unique_runs = {}
     for run in runs:
         unique_runs[run["prefix"]] = run
 
-    return [unique_runs[k] for k in sorted(unique_runs)]
+    return [unique_runs[prefix] for prefix in sorted(unique_runs)]
 
 
 def write_outputs(runs: list[dict], output_dir: Path) -> Path:
@@ -162,10 +168,10 @@ def write_outputs(runs: list[dict], output_dir: Path) -> Path:
         run_dir = output_dir / run["prefix"]
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        r_path = run_dir / f"{run['prefix']}_Pred.json"
+        prediction_path = run_dir / f"{run['prefix']}_Pred.json"
         meta_path = run_dir / f"{run['prefix']}_meta.json"
 
-        r_path.write_text(json.dumps(run["r_json"], indent=2, ensure_ascii=False), encoding="utf-8")
+        prediction_path.write_text(json.dumps(run["r_json"], indent=2, ensure_ascii=False), encoding="utf-8")
         meta_path.write_text(json.dumps(run["meta"], indent=2, ensure_ascii=False), encoding="utf-8")
 
         summary_rows.append(
@@ -188,12 +194,12 @@ def write_outputs(runs: list[dict], output_dir: Path) -> Path:
     return summary_path
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Prepare Scenario D optimization inputs from old XGBoost forecasts.")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Prepare Scenario D optimization inputs from XGBoost forecasts.")
     parser.add_argument(
         "--forecast-file",
         default="yeni parametrelerle old/XGBoost_pred_weekend_filled_old.xlsx",
-        help="Prediction workbook with Forecasts sheet.",
+        help="Prediction workbook containing the Forecasts sheet.",
     )
     parser.add_argument(
         "--historical-file",
@@ -209,9 +215,13 @@ def main() -> None:
         "--quantile",
         type=float,
         default=0.90,
-        help="Historical ATM-level quantile used as the demand peak threshold.",
+        help="ATM-level historical quantile used as the demand peak threshold.",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
 
     forecast_file = Path(args.forecast_file)
     historical_file = Path(args.historical_file)
@@ -232,7 +242,7 @@ def main() -> None:
     weekly_runs = sum(1 for run in runs if run["meta"]["trigger_type"] == "weekly")
     peak_runs = sum(1 for run in runs if run["meta"]["trigger_type"] == "peak_threshold")
 
-    print(f"Forecast file : {forecast_file}")
+    print(f"Forecast file  : {forecast_file}")
     print(f"Historical file: {historical_file}")
     print(f"Threshold q    : {args.quantile:.2f}")
     print(f"Weekly runs    : {weekly_runs}")
