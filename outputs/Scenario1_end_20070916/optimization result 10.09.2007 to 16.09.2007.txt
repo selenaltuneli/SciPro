@@ -1,9 +1,0 @@
-
-============================================================
-RESULT FILE
-Result filename: optimization result 10.09.2007 to 16.09.2007.txt
-Results will also be saved to:
-outputs/Scenario1_end_20070916/optimization result 10.09.2007 to 16.09.2007.txt
-============================================================
-
-=== START OPTIMIZE ===
