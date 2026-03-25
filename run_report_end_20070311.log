@@ -1,5 +1,0 @@
-Using atm_master_file: /Users/selenaltuneli/Desktop/selen/proje/outputs/weeklyavg_FIXED_end_20070225_atm_master.csv 2026-03-05 23:51:06.644075
-Using edges_file     : /Users/selenaltuneli/Desktop/selen/proje/outputs/weeklyavg_FIXED_end_20070225_edges_dist_km.csv 2026-03-05 23:51:04.963497
-Using r_file (DEMAND): /Users/selenaltuneli/Desktop/selen/proje/outputs/weeklyavg_Scenario1_end_20070311_r_nextweek.json 2026-03-09 17:17:17.511204
-Using run_report_file: run_report_end_20070311.log
-=== START OPTIMIZE ===
