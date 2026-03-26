@@ -1,5 +1,3 @@
-# ATM Cash Demand Forecasting and Re-Optimization
-
 This project focuses on forecasting daily ATM cash withdrawals and preparing model outputs for cash replenishment planning.  
 The workflow starts with raw ATM and branch data, continues with feature engineering, and ends with multiple forecasting models and optimization-oriented outputs.
 
@@ -55,6 +53,17 @@ The project is organized as a step-by-step pipeline.
 - `Optimization Final.py`  
   Main optimization model used after forecasting.
 
+- `pipeline_Scenario0.py`  
+  Prepares Scenario 0 planning inputs by computing ATM-level average demand over the available historical window.
+
+### Evaluation and Reporting
+
+- `optimization_metrics_revised.py`  
+  Calculates run-level and scenario-level optimization performance metrics from result files.
+
+- `forecast and real world reflected metrics.py`  
+  Compares forecast-based demand metrics with realized service outcomes.
+
 ## Main Dataset
 
 - `ATM_Branch_Data_Final_filled.xlsx`  
@@ -72,4 +81,4 @@ The scripts are intended to be used in the following order:
 6. Fill missing ATM values if needed.
 7. Train forecasting models.
 8. Use the prediction outputs in the optimization stage.
-
+9. Evaluate optimization and realized-service metrics when needed.
