@@ -25,6 +25,7 @@ class DataConfig:
     col_date: str = "DATE"
     col_withdraw: str = "WITHDRWLS_ATM"
 
+
     # Column names in scenario control file
     col_reopt: str = "reoptimization_date"
     col_plan_start: str = "planning_start_date"
