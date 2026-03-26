@@ -18,7 +18,6 @@ SCENARIO_ORDER = [
     "ScenarioF_5pct",
 ]
 
-
 SCENARIO_LABEL_MAP = {
     "Scenario0": "Scenario 0",
     "ScenarioA": "Scenario 1",
